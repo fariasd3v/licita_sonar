@@ -1,282 +1,249 @@
 # Licita Sonar Deployment Guide
 
-This guide will help you deploy the Licita Sonar application to Vercel (frontend) and Render (backend) for production use.
+## Overview
+
+This guide provides step-by-step instructions for deploying the Licita Sonar application to production environments. The application consists of a Node.js backend and a static frontend that can be deployed separately.
 
 ## Prerequisites
 
-1. GitHub account
-2. Vercel account (free tier)
-3. Render account (free tier)
-4. Node.js installed locally (for testing)
+- Node.js v16+ installed
+- npm or yarn package manager
+- Git installed
+- Accounts on Render (backend) and Vercel (frontend)
 
-## Project Structure
+## Local Development Setup
 
-```
-licita-sonar/
-├── src/                 # Backend source code
-├── public/              # Frontend static files
-│   ├── index.html       # Original frontend
-│   └── dashboard.html   # Modern dashboard
-├── package.json         # Project dependencies and scripts
-├── vercel.json          # Vercel deployment configuration
-├── render.yaml          # Render deployment configuration
-├── .env.example         # Environment variables template
-└── README.md            # Project documentation
-```
-
-## Frontend Deployment (Vercel)
-
-### Step 1: Push to GitHub
-
-1. Create a new repository on GitHub
-2. Push your local code to the repository:
+1. **Clone the repository**:
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/yourusername/licita-sonar.git
-   git push -u origin main
+   git clone <repository-url>
+   cd licita-sonar
    ```
 
-### Step 2: Deploy to Vercel
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-1. Go to [vercel.com](https://vercel.com) and sign in
-2. Click "New Project"
-3. Import your GitHub repository
-4. Configure the project:
-   - Framework Preset: Other
-   - Root Directory: Leave empty
-   - Build and Output Settings:
-     - Build Command: `npm run build:frontend` (or leave empty for static deployment)
+3. **Configure environment variables**:
+   Create a `.env` file in the root directory:
+   ```env
+   ACCESS_TOKEN_SECRET=your_secure_jwt_secret_here
+   PORT=3000
+   NODE_ENV=production
+   ```
+
+4. **Initialize the database**:
+   The SQLite database will be created automatically on first run.
+
+5. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+
+## Production Deployment
+
+### Backend Deployment (Render)
+
+1. **Create a Render account**:
+   - Go to https://render.com
+   - Sign up for a free account
+
+2. **Create a new Web Service**:
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Set the following configuration:
+     - Name: `licita-sonar-backend`
+     - Region: Choose your preferred region
+     - Branch: `main`
+     - Root Directory: Leave empty
+     - Environment: `Node`
+     - Build Command: `npm install`
+     - Start Command: `node src/index.js`
+     - Plan: `Free`
+
+3. **Configure environment variables**:
+   In the "Advanced" section, add these environment variables:
+   ```
+   ACCESS_TOKEN_SECRET=your_production_jwt_secret_here
+   NODE_ENV=production
+   ```
+
+4. **Deploy**:
+   - Click "Create Web Service"
+   - Render will automatically build and deploy your application
+   - Note the generated URL for your backend
+
+### Frontend Deployment (Vercel)
+
+1. **Create a Vercel account**:
+   - Go to https://vercel.com
+   - Sign up for a free account
+
+2. **Import the project**:
+   - Click "New Project"
+   - Import your Git repository or upload the files
+   - Set the following configuration:
+     - Framework Preset: `Other`
+     - Root Directory: Leave as default
+     - Build Command: `npm run build:frontend`
      - Output Directory: `public`
      - Install Command: `npm install`
-5. Click "Deploy"
-6. Wait for the deployment to complete
 
-### Step 3: Access Your Frontend
+3. **Configure environment variables** (if needed):
+   - Generally not required for static frontend
 
-Once deployed, Vercel will provide you with a URL like:
-```
-https://licita-sonar.vercel.app
-```
+4. **Deploy**:
+   - Click "Deploy"
+   - Vercel will build and deploy your frontend
 
-You can access:
-- Original frontend: `https://your-url.vercel.app/`
-- Modern dashboard: `https://your-url.vercel.app/dashboard.html`
+## Environment Configuration
 
-## Backend Deployment (Render)
+### Required Environment Variables
 
-### Step 1: Deploy to Render
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ACCESS_TOKEN_SECRET` | JWT secret for authentication | `your_secure_secret_here` |
+| `PORT` | Server port (optional, defaults to 3000) | `3000` |
+| `NODE_ENV` | Environment (development/production) | `production` |
 
-1. Go to [render.com](https://render.com) and sign in
-2. Click "New" → "Web Service"
-3. Connect your GitHub repository
-4. Configure the service:
-   - Name: `licita-sonar-backend`
-   - Region: Choose your preferred region
-   - Branch: main
-   - Runtime: Node
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-5. Click "Advanced" and add environment variables:
-   - `ACCESS_TOKEN_SECRET`: Generate a strong secret key
-   - `NODE_ENV`: `production`
-6. Click "Create Web Service"
+### Optional Environment Variables
 
-### Step 2: Get Your Backend URL
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `LOG_LEVEL` | Logging level (error/warn/info/debug) | `info` |
 
-Render will provide you with a URL like:
-```
-https://licita-sonar-backend.onrender.com
-```
+## Database Management
 
-## Configuration
+The application uses SQLite for data storage. In production:
 
-### Environment Variables
+1. **Backup Strategy**:
+   - Regularly backup the `database.sqlite` file
+   - Consider automated backup solutions
 
-Create a `.env` file in your project root with the following variables:
+2. **Migration**:
+   - Database schema is automatically created on first run
+   - Future schema changes should be handled with migration scripts
 
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=production
+## Monitoring and Logging
 
-# Security
-ACCESS_TOKEN_SECRET=your_super_secret_access_token_key_here_change_it
+### Log Files
+- `logs/error.log` - Error logs
+- `logs/combined.log` - All logs
 
-# Logging
-LOG_LEVEL=info
-```
+### Health Checks
+- Endpoint: `GET /health`
+- Returns: Application status, uptime, memory usage
 
-**Important**: Never commit your `.env` file to version control. The `.gitignore` file already excludes it.
+### Monitoring
+- Set up alerts for application downtime
+- Monitor log files for errors
+- Track scraping success rates
 
-## API Usage
+## Scaling Considerations
 
-Once deployed, you can interact with your API using the Render URL.
+### Current Limitations
+- SQLite database limits concurrent writes
+- Single server instance
+- Puppeteer resource usage
 
-### 1. Register a User
-
-```bash
-curl -X POST https://your-backend-url.onrender.com/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"yourusername","password":"yourpassword"}'
-```
-
-Response:
-```json
-{
-  "message": "User created successfully",
-  "accessToken": "your_jwt_token"
-}
-```
-
-### 2. Login
-
-```bash
-curl -X POST https://your-backend-url.onrender.com/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"yourusername","password":"yourpassword"}'
-```
-
-Response:
-```json
-{
-  "message": "Login successful",
-  "accessToken": "your_jwt_token",
-  "user": {
-    "id": 1,
-    "username": "yourusername"
-  }
-}
-```
-
-### 3. Add a Session to Monitor
-
-```bash
-curl -X POST https://your-backend-url.onrender.com/api/sessions/add \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"sessionId":"SESSION_ID_TO_MONITOR"}'
-```
-
-Response:
-```json
-{
-  "message": "Session added successfully",
-  "sessionId": "SESSION_ID_TO_MONITOR",
-  "id": 1
-}
-```
-
-### 4. Get Messages for a Session
-
-```bash
-curl https://your-backend-url.onrender.com/api/sessions/SESSION_ID/messages \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-Response:
-```json
-{
-  "messages": [
-    {
-      "id": 1,
-      "sessao_id": "SESSION_ID_TO_MONITOR",
-      "msg": "Message content",
-      "timestamp": "2023-01-01T00:00:00.000Z"
-    }
-  ]
-}
-```
-
-## Testing Your Deployment
-
-### 1. Test Frontend Access
-
-Visit your Vercel URLs:
-- `https://your-project.vercel.app/` (original interface)
-- `https://your-project.vercel.app/dashboard.html` (modern dashboard)
-
-### 2. Test Backend API
-
-Use the registration endpoint to create a test user:
-```bash
-curl -X POST https://your-backend-url.onrender.com/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"testpass123"}'
-```
-
-### 3. Test Session Monitoring
-
-After logging in, add a session to monitor:
-```bash
-# First login to get token
-curl -X POST https://your-backend-url.onrender.com/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"testpass123"}'
-
-# Use the token from the response to add a session
-curl -X POST https://your-backend-url.onrender.com/api/sessions/add \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN_FROM_LOGIN" \
-  -d '{"sessionId":"12345"}'
-```
+### Scaling Options
+1. **Database**: Migrate to PostgreSQL or MySQL
+2. **Clustering**: Use PM2 or similar process managers
+3. **Microservices**: Split scraping functionality into separate services
+4. **Caching**: Implement Redis for session caching
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **CORS Errors**: Make sure your frontend and backend URLs are properly configured in the CORS settings.
+1. **Port in use**:
+   ```bash
+   # On Linux/Mac
+   lsof -i :3000
+   kill -9 <PID>
+   
+   # On Windows
+   netstat -ano | findstr :3000
+   taskkill /PID <PID> /F
+   ```
 
-2. **Environment Variables**: Ensure all required environment variables are set in Render.
+2. **Database locked**:
+   - Ensure only one process accesses the database
+   - Check for orphaned database connections
 
-3. **Build Failures**: Check the build logs in Vercel/Render for specific error messages.
+3. **Scraping failures**:
+   - Check logs for "BLOCKED" or "Estrutura alterada" errors
+   - Verify target website is accessible
+   - Update selectors in scraper utility if structure changed
 
-4. **WebSocket Connection**: If WebSocket connections fail, check that your Render service supports WebSocket connections (it should by default).
+4. **Authentication issues**:
+   - Verify `ACCESS_TOKEN_SECRET` is set correctly
+   - Check JWT token expiration settings
 
-### Checking Logs
+### Debugging
 
-- **Vercel**: Visit your project dashboard and click on "Logs"
-- **Render**: Visit your service dashboard and click on "Logs"
+1. **Enable debug logging**:
+   Set `LOG_LEVEL=debug` in environment variables
 
-## Scaling Considerations
+2. **Check browser compatibility**:
+   Ensure Puppeteer dependencies are installed:
+   ```bash
+   npm install puppeteer
+   ```
 
-The free tier limitations:
-- Render: 750 hours/month
-- Vercel: Generous free tier with reasonable limits
-- SQLite: File-based database, suitable for small-scale applications
+3. **Test scraping manually**:
+   Use the "Coletar Agora" button to trigger immediate scraping
 
-For production use with higher traffic, consider:
-- Upgrading to paid tiers
-- Using a managed database service
-- Implementing proxy rotation for scraping
-- Adding caching mechanisms
+## Security Considerations
 
-## Security Best Practices
+### Authentication
+- Use a strong `ACCESS_TOKEN_SECRET`
+- JWT tokens expire after 24 hours
+- Passwords are hashed with bcrypt
 
-1. **JWT Secret**: Use a strong, randomly generated secret for `ACCESS_TOKEN_SECRET`
-2. **HTTPS**: Both Vercel and Render provide HTTPS by default
-3. **Input Validation**: The application includes input sanitization
-4. **Rate Limiting**: Consider implementing rate limiting for API endpoints
-5. **Regular Updates**: Keep dependencies updated
+### Data Protection
+- User data is isolated by user ID
+- Sessions are user-specific
+- No sensitive data is stored in logs
 
-## Monitoring
+### Network Security
+- CORS is configured for specific origins
+- HTTPS is recommended for production
+- API endpoints are protected with authentication
 
-Render provides built-in monitoring:
-- CPU usage
-- Memory usage
-- Response times
-- Error rates
+## Maintenance
 
-Set up alerts for critical metrics to ensure your application stays healthy.
+### Regular Tasks
+1. **Database cleanup**:
+   - Remove old sessions that are no longer needed
+   - Archive old chat messages
 
-## Conclusion
+2. **Log rotation**:
+   - Implement log rotation to prevent disk space issues
+   - Monitor log file sizes
 
-Your Licita Sonar application is now ready for deployment! The combination of Vercel for frontend and Render for backend provides a robust, zero-cost hosting solution that can handle the application's requirements.
+3. **Dependency updates**:
+   - Regularly update npm packages
+   - Monitor for security vulnerabilities
 
-Remember to:
-1. Keep your environment variables secure
-2. Monitor your application's usage
-3. Stay within the free tier limits
-4. Regularly update dependencies
+### Backup Strategy
+1. **Daily backups**:
+   - Backup `database.sqlite` file
+   - Backup `logs/` directory
+
+2. **Disaster recovery**:
+   - Document recovery procedures
+   - Test backup restoration regularly
+
+## Support
+
+For deployment issues, please:
+1. Check the logs for error messages
+2. Verify all environment variables are set
+3. Ensure all dependencies are installed
+4. Contact the development team if issues persist
+
+## Version Information
+
+Current version: 1.0.0
+Node.js requirement: v16+

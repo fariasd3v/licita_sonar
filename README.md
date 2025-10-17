@@ -1,159 +1,142 @@
-# Licita Sonar
+# Licita Sonar - Public Bidding Chat Monitoring System
 
-A web application for monitoring public bidding chats on [Licitações-e2](https://licitacoes-e2.bb.com.br/) without official APIs, using ethical scraping techniques.
+## Overview
+
+Licita Sonar is a comprehensive solution for monitoring real-time chat communications in public bidding sessions on the BB platform (https://licitacoes-e2.bb.com.br). This system allows users to track multiple bidding sessions, collect chat messages, and analyze communications for business intelligence and compliance purposes.
 
 ## Features
 
-- Real-time dashboard with WebSocket updates
-- Ethical scraping with anti-bot detection measures
-- User authentication with JWT
-- SQLite storage for messages
-- LGPD compliance with local logging
+### Core Functionality
+- **Multi-Session Monitoring**: Add and track multiple bidding sessions by their IDs
+- **Real-time Chat Collection**: Automatically scrape and collect chat messages from sessions
+- **User Authentication**: Secure login/registration system with JWT tokens
+- **Session Management**: Maintain a list of active monitoring sessions
+- **Session Switching**: Enable users to switch between different sessions
+- **Advanced Filtering**: Filter messages by CNPJ or custom keywords
+- **Real-time Updates**: WebSocket-based live message updates
+- **Data Persistence**: Store all collected data in SQLite database
+
+### Technical Features
+- **Anti-Detection Scraping**: Uses Puppeteer with stealth plugin to avoid bot detection
+- **User Agent Rotation**: 20+ realistic user agents to mimic human behavior
+- **Human Interaction Simulation**: Random scrolls, clicks, and delays
+- **Responsive Web Interface**: Modern, mobile-friendly dashboard
+- **RESTful API**: Well-documented API endpoints for all functionality
+- **WebSocket Communication**: Real-time message broadcasting
+- **Comprehensive Logging**: Detailed logs for debugging and monitoring
 
 ## Architecture
 
-```mermaid
-sequenceDiagram
-    participant Browser as Dashboard (React)
-    participant Backend as Node.js/Express
-    participant Site as Licitações-e2
-    participant DB as SQLite
-    
-    Browser->>Backend: 1. Login (JWT Auth)
-    Backend-->>Browser: Token JWT
-    
-    Browser->>Backend: 2. Selecionar Sessão
-    Backend->>Site: 3. Scraping com Puppeteer
-    Note over Backend,Site: User-Agent Rotation + Stealth
-    Site-->>Backend: HTML Response
-    
-    Backend->>Backend: 4. Parse Messages
-    Backend->>DB: 5. Store in SQLite
-    DB-->>Backend: Confirm Storage
-    
-    Backend->>Backend: 6. WebSocket Broadcast
-    Backend-->>Browser: 7. Real-time Updates
-    
-    loop Polling Interval (5-15s)
-        Backend->>Site: Scrape for New Messages
-        Site-->>Backend: Updated Content
-        Backend->>DB: Store New Messages
-        Backend-->>Browser: WebSocket Update
-    end
-```
+### Frontend
+- **HTML/CSS/JavaScript**: Pure frontend implementation without external frameworks
+- **Responsive Design**: Works on desktop and mobile devices
+- **Real-time UI**: Updates automatically with new messages via WebSocket
 
-## Anti-Bot Measures
-
-1. User-Agent rotation with 20+ realistic strings
-2. Stealth plugin for fingerprint evasion
-3. Human-like behavior simulation (scrolling, clicking)
-4. Randomized delays between requests
-5. Error handling for 403/429 responses
-
-## Requirements
-
-- Node.js >= 14
-- npm
+### Backend
+- **Node.js/Express**: REST API server
+- **SQLite**: Lightweight database for data storage
+- **Puppeteer**: Web scraping engine with anti-detection features
+- **Socket.IO**: Real-time communication
+- **JWT**: Secure authentication
 
 ## Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
    git clone <repository-url>
+   cd licita-sonar
    ```
 
-2. Install dependencies:
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. Copy and configure environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your settings
+3. **Configure environment variables**:
+   Create a `.env` file based on `.env.example`:
+   ```env
+   ACCESS_TOKEN_SECRET=your_jwt_secret_here
+   PORT=3000
    ```
 
-4. Start the development server:
+4. **Start the application**:
    ```bash
-   npm run dev
+   npm start
    ```
+
+5. **Access the application**:
+   Open your browser and navigate to `http://localhost:3000`
+
+## Usage
+
+### 1. Authentication
+- Register a new account or login with existing credentials
+- All sessions are user-specific for data privacy
+
+### 2. Session Management
+- Add sessions by their ID using the "Adicionar Sessão" form
+- View all monitored sessions in the sidebar
+- Click on any session to view its chat messages
+- Delete sessions you no longer want to monitor
+
+### 3. Message Monitoring
+- Real-time message updates appear automatically
+- Use filters to highlight specific CNPJs or keywords
+- Refresh manually or trigger immediate scraping with "Coletar Agora"
+
+### 4. Data Analysis
+- View statistics on message count and active sessions
+- Filter messages for specific information
+- All data is persisted for historical analysis
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - User login
+- `GET /api/auth/verify` - Verify JWT token
+
+### Sessions
+- `POST /api/sessions/add` - Add new session to monitor
+- `GET /api/sessions` - Get all user sessions
+- `GET /api/sessions/:sessionId/messages` - Get messages for a session
+- `POST /api/sessions/:sessionId/scrape` - Trigger manual scraping
 
 ## Deployment
 
-### Frontend Deployment (Vercel)
+### Backend (Render)
+- Free tier deployment with 750 hours/month
+- Automatic scaling and SSL
 
-1. Create a new project on Vercel
-2. Connect your GitHub repository
-3. Configure the project:
-   - Build Command: `npm run build` (if you have a build step) or use static deployment
-   - Output Directory: `public`
-   - Install Command: `npm install`
-4. Add environment variables if needed
-5. Deploy!
+### Frontend (Vercel)
+- Free tier static site hosting
+- Automatic deployments from GitHub
 
-For static deployment, Vercel will automatically serve files from the `public` directory.
+## Anti-Detection Measures
 
-### Backend Deployment (Render)
+To avoid being blocked by the target website, the system implements:
+- User agent rotation (20+ realistic agents)
+- Human interaction simulation (random scrolls, clicks, delays)
+- Puppeteer stealth plugin for fingerprint evasion
+- Randomized scraping intervals (5-15 seconds)
+- Proper HTTP headers and viewport settings
 
-1. Create a new Web Service on Render
-2. Connect your GitHub repository
-3. Configure the service:
-   - Name: `licita-sonar-backend`
-   - Runtime: Node
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-4. Add environment variables:
-   - `ACCESS_TOKEN_SECRET`: Your JWT secret key
-   - `NODE_ENV`: production
-5. Deploy!
+## Contributing
 
-The `render.yaml` file in the repository provides these configurations automatically.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a pull request
 
-## API Usage
+## Support
 
-Once deployed, you can interact with the API:
-
-1. Register a user:
-   ```bash
-   curl -X POST https://your-backend-url.onrender.com/api/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{"username":"yourusername","password":"yourpassword"}'
-   ```
-
-2. Login to get a token:
-   ```bash
-   curl -X POST https://your-backend-url.onrender.com/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username":"yourusername","password":"yourpassword"}'
-   ```
-
-3. Add a session to monitor:
-   ```bash
-   curl -X POST https://your-backend-url.onrender.com/api/sessions/add \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     -d '{"sessionId":"SESSION_ID_TO_MONITOR"}'
-   ```
-
-4. Get messages for a session:
-   ```bash
-   curl https://your-backend-url.onrender.com/api/sessions/SESSION_ID/messages \
-     -H "Authorization: Bearer YOUR_JWT_TOKEN"
-   ```
-
-## Security & Compliance
-
-- JWT authentication
-- Input sanitization with DOMPurify
-- Local logging for audit (LGPD compliant)
-- No external data sharing
-
-## Limitations
-
-- Supports up to 10 concurrent sessions (SQLite/Render limitation)
-- No proxy rotation (free tier restriction)
-- Dependent on site structure stability
+For support, please open an issue on the GitHub repository or contact the development team.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Company Information
+
+This solution was developed to help companies monitor public bidding processes transparently, identify business opportunities in real-time, and ensure fair and transparent public procurement processes. The system acts as a "sonar" that detects and tracks relevant conversations in the "sea" of public bidding chats, hence the name "Licita Sonar".

@@ -525,6 +525,9 @@
                             <button id="refreshBtn" class="btn btn-primary">
                                 <i class="fas fa-sync-alt"></i> Atualizar
                             </button>
+                            <button id="scrapeNowBtn" class="btn btn-primary">
+                                <i class="fas fa-bolt"></i> Coletar Agora
+                            </button>
                         </div>
                     </div>
                     <div class="chat-messages" id="chatMessages">
@@ -585,6 +588,7 @@
                     currentUser = data.user;
                     showUserPanel();
                     loadSessions();
+                    connectSocket();
                     dashboard.classList.remove('hidden');
                 })
                 .catch(error => {
@@ -747,6 +751,9 @@
                     showMessage(sessionMessage, sessionMessageText, 'Sessão adicionada com sucesso!', 'success');
                     document.getElementById('sessionIdInput').value = '';
                     loadSessions();
+                    
+                    // Start scraping for this session
+                    startScrapingSession(sessionId);
                 }
             })
             .catch(error => {
@@ -820,6 +827,9 @@
                     currentSession = null;
                     clearMessages();
                 }
+                
+                // Stop scraping for this session
+                stopScrapingSession(sessionId);
             }
         }
 
@@ -915,6 +925,32 @@
             }
         }
 
+        // Manual scraping function
+        function scrapeNow() {
+            if (currentSession) {
+                fetch(`/api/sessions/${currentSession}/scrape`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showMessage(sessionMessage, sessionMessageText, `Erro na coleta: ${data.error}`, 'error');
+                    } else {
+                        showMessage(sessionMessage, sessionMessageText, 'Coleta realizada com sucesso!', 'success');
+                        // Refresh messages after scraping
+                        loadMessages(currentSession);
+                    }
+                })
+                .catch(error => {
+                    console.error('Scrape error:', error);
+                    showMessage(sessionMessage, sessionMessageText, 'Erro ao coletar mensagens.', 'error');
+                });
+            }
+        }
+
         // Stats functions
         function updateStats() {
             messageCount.textContent = sessionStats.messageCount;
@@ -971,6 +1007,17 @@
             });
         }
 
+        // Scraping control functions
+        function startScrapingSession(sessionId) {
+            // In a real implementation, this would call an API endpoint to start scraping
+            console.log(`Starting scraping for session: ${sessionId}`);
+        }
+
+        function stopScrapingSession(sessionId) {
+            // In a real implementation, this would call an API endpoint to stop scraping
+            console.log(`Stopping scraping for session: ${sessionId}`);
+        }
+
         // Event listeners
         document.getElementById('loginBtn').addEventListener('click', login);
         document.getElementById('registerBtn').addEventListener('click', register);
@@ -982,6 +1029,7 @@
             }
         });
         document.getElementById('refreshBtn').addEventListener('click', refreshMessages);
+        document.getElementById('scrapeNowBtn').addEventListener('click', scrapeNow);
         
         // Allow Enter key to submit login/register forms
         document.getElementById('password').addEventListener('keyup', function(event) {

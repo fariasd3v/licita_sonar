@@ -52,6 +52,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Serve main application
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+// Serve dashboard (same as main app in this implementation)
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html'));
+});
+
 // Initialize database
 initDatabase();
 
@@ -91,6 +101,9 @@ io.on('connection', (socket) => {
   socket.on('joinSession', (sessionId) => {
     socket.join(sessionId);
     logger.info(`Client joined session: ${sessionId}`);
+    
+    // When a client joins a session, we can trigger an immediate scrape
+    scraperService.startScrapingSession(sessionId);
   });
   
   socket.on('disconnect', () => {

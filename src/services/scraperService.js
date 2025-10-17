@@ -1,5 +1,6 @@
 const { getDatabase } = require('../config/database');
 const { scrapeWithAntiBot } = require('../utils/scraper');
+const { io } = require('../index'); // Import socket.io instance
 
 // We'll initialize the logger after the circular dependency is resolved
 let logger;
@@ -101,7 +102,17 @@ function startScrapingSession(sessionId) {
         } else {
           logger.info(`Successfully scraped ${result.length} messages for session: ${sessionId}`);
         }
-        // TODO: Emit messages via WebSocket to connected clients
+        
+        // Emit messages via WebSocket to connected clients
+        if (io) {
+          result.forEach(message => {
+            io.to(sessionId).emit('newMessage', {
+              sessionId: sessionId,
+              msg: message.text,
+              timestamp: message.timestamp
+            });
+          });
+        }
       }
     } catch (error) {
       if (!logger) {
