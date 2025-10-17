@@ -90,47 +90,38 @@ async function scrapeWithAntiBot(sessionId) {
     // Set viewport to a common desktop size
     await page.setViewport({ width: 1366, height: 768 });
     
-    // Navigate to the BB licitacoes website
+    // Navigate to the BB licitacoes website using the complex URL structure
     if (!logger) {
       console.log(`Navigating to BB licitacoes page for session: ${sessionId}`);
     } else {
       logger.info(`Navigating to BB licitacoes page for session: ${sessionId}`);
     }
     
-    // Try to access the session page on BB website
-    await page.goto(`https://licitacoes-e2.bb.com.br/`, { 
-      waitUntil: 'networkidle2',
-      timeout: 30000 
-    });
+    // Try the complex URL structure first
+    const complexUrl = `https://licitacoes-e2.bb.com.br/aop-inter-estatico/fornecedor/lotes/${sessionId}/12/historico-mensagem/${sessionId}/12/8`;
+    
+    try {
+      await page.goto(complexUrl, { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+    } catch (navigationError) {
+      // If complex URL fails, try the simple structure
+      if (!logger) {
+        console.log(`Complex URL failed, trying simple structure for session: ${sessionId}`);
+      } else {
+        logger.info(`Complex URL failed, trying simple structure for session: ${sessionId}`);
+      }
+      
+      const simpleUrl = `https://licitacoes-e2.bb.com.br/sessao/${sessionId}/chat`;
+      await page.goto(simpleUrl, { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+    }
     
     // Wait for the page to load
     await page.waitForTimeout(3000);
-    
-    // Try to find and navigate to the specific session
-    try {
-      // Look for search or navigation elements
-      const searchInput = await page.$('input[type="text"], input[name*="search"], input[placeholder*="sess"]');
-      if (searchInput) {
-        await searchInput.type(sessionId);
-        // Try to find a search button
-        const searchButton = await page.$('button[type="submit"], button[title*="buscar"], .search-button');
-        if (searchButton) {
-          await searchButton.click();
-        } else {
-          // Press Enter if no button found
-          await searchInput.press('Enter');
-        }
-      }
-      
-      // Wait for results
-      await page.waitForTimeout(5000);
-    } catch (searchError) {
-      if (!logger) {
-        console.log(`Search navigation failed for session ${sessionId}:`, searchError.message);
-      } else {
-        logger.info(`Search navigation failed for session ${sessionId}:`, searchError.message);
-      }
-    }
     
     // Simulate human interaction
     // Random scroll
@@ -161,7 +152,7 @@ async function scrapeWithAntiBot(sessionId) {
     let messages = [];
     let foundMessages = false;
     
-    // Try multiple selectors for chat messages
+    // Try multiple selectors for chat messages including those specific to the complex structure
     const selectors = [
       '#chat-messages li',
       '.chat-message',
@@ -169,7 +160,10 @@ async function scrapeWithAntiBot(sessionId) {
       '[class*="message"][class*="chat"]',
       'div[class*="chat"] div[class*="message"]',
       '.chat-container .message',
-      '.messages-container .message-item'
+      '.messages-container .message-item',
+      '.historico-mensagem',
+      '.mensagem-item',
+      '.message-content'
     ];
     
     for (const selector of selectors) {
@@ -186,8 +180,8 @@ async function scrapeWithAntiBot(sessionId) {
     if (foundMessages) {
       // Extract messages from chat
       messages = await page.evaluate(() => {
-        // Try multiple approaches to get messages
-        const messageElements = document.querySelectorAll('#chat-messages li, .chat-message, .message-item, [class*="message"][class*="chat"]');
+        // Try multiple approaches to get messages including selectors for the complex structure
+        const messageElements = document.querySelectorAll('#chat-messages li, .chat-message, .message-item, [class*="message"][class*="chat"], .historico-mensagem, .mensagem-item, .message-content');
         return Array.from(messageElements).map(el => ({
           text: el.innerText.trim(),
           timestamp: new Date().toISOString()
