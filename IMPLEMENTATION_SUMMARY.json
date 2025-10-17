@@ -1,0 +1,37 @@
+{
+  "arquitetura": {
+    "diagrama": "sequenceDiagram\n    participant Browser as Dashboard (React)\n    participant Backend as Node.js/Express\n    participant Site as Licitações-e2\n    participant DB as SQLite\n    \n    Browser->>Backend: 1. Login (JWT Auth)\n    Backend-->>Browser: Token JWT\n    \n    Browser->>Backend: 2. Selecionar Sessão\n    Backend->>Site: 3. Scraping com Puppeteer\n    Note over Backend,Site: User-Agent Rotation + Stealth\n    Site-->>Backend: HTML Response\n    \n    Backend->>Backend: 4. Parse Messages\n    Backend->>DB: 5. Store in SQLite\n    DB-->>Backend: Confirm Storage\n    \n    Backend->>Backend: 6. WebSocket Broadcast\n    Backend-->>Browser: 7. Real-time Updates\n    \n    loop Polling Interval (5-15s)\n        Backend->>Site: Scrape for New Messages\n        Site-->>Backend: Updated Content\n        Backend->>DB: Store New Messages\n        Backend-->>Browser: WebSocket Update\n    end",
+    "componentes": [
+      "Frontend Dashboard (React) - Exibe feed de mensagens em tempo real com filtros por CNPJ/palavra-chave",
+      "Backend API (Node.js/Express) - Gerencia autenticação, scraping e comunicação WebSocket",
+      "Scraping Engine (Puppeteer) - Extrai mensagens do chat público com técnicas anti-detecção",
+      "POC Anti-Bot Gratuita - Rotação de user-agents, simulação de interações humanas, fallback para erros",
+      "Autenticação JWT - Sistema de login seguro usando jsonwebtoken",
+      "Sanitização de Inputs - Proteção contra XSS usando DOMPurify",
+      "Logging Local - Registro de atividades com Winston para conformidade LGPD",
+      "Armazenamento SQLite - Banco de dados local para persistência de mensagens",
+      "WebSocket Server (Socket.io) - Transmissão em tempo real das mensagens para o dashboard"
+    ],
+    "fluxo": "1. Usuário faz login no dashboard (JWT auth) -> 2. Seleciona sessão de pregão para monitorar -> 3. Backend inicia scraping com Puppeteer -> 4. Mensagens são extraídas e salvas no SQLite -> 5. WebSocket transmite mensagens em tempo real para o dashboard -> 6. Usuário visualiza feed com filtros aplicados"
+  },
+  "poc_anti_bot": {
+    "codigo_js": "const puppeteer = require('puppeteer-extra');\nconst StealthPlugin = require('puppeteer-extra-plugin-stealth');\npuppeteer.use(StealthPlugin());\n\nconst userAgents = [\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',\n  // ... mais 15 user-agents\n];\n\nasync function scrapeWithAntiBot(sessionId) {\n  // Seleciona user-agent aleatório\n  const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];\n  \n  const browser = await puppeteer.launch({ headless: true });\n  const page = await browser.newPage();\n  \n  // Aplica user-agent\n  await page.setUserAgent(randomUserAgent);\n  \n  try {\n    // Navega para a página do chat\n    await page.goto(`https://licitacoes-e2.bb.com.br/sessao/${sessionId}/chat`, { \n      waitUntil: 'networkidle2',\n      timeout: 30000 \n    });\n    \n    // Simula interação humana\n    await page.evaluate(() => {\n      window.scrollBy(0, Math.random() * 200 + 100); // Scroll aleatório\n    });\n    \n    // Delay aleatório entre 2-10 segundos\n    await new Promise(resolve => setTimeout(resolve, Math.random() * 8000 + 2000));\n    \n    // Clique aleatório em posição da página\n    const body = await page.$('body');\n    const box = await body.boundingBox();\n    await page.mouse.click(\n      box.x + Math.random() * box.width * 0.1,\n      box.y + Math.random() * box.height * 0.1\n    );\n    \n    // Extrai mensagens do chat\n    await page.waitForSelector('#chat-messages li', { timeout: 5000 });\n    const messages = await page.evaluate(() => {\n      const messageElements = document.querySelectorAll('#chat-messages li');\n      return Array.from(messageElements).map(el => ({\n        text: el.innerText,\n        timestamp: new Date().toISOString()\n      }));\n    });\n    \n    await browser.close();\n    return messages.slice(-5); // Retorna últimas 5 mensagens\n    \n  } catch (error) {\n    await browser.close();\n    \n    // Fallback para erros 403/429\n    if (error.message.includes('403') || error.message.includes('429')) {\n      console.log('Possível bloqueio detectado para sessão:', sessionId);\n      return { error: 'BLOCKED', details: error.message };\n    }\n    \n    // Estrutura alterada\n    if (error.message.includes('waiting for selector')) {\n      return { error: 'Estrutura alterada' };\n    }\n    \n    throw error;\n  }\n}\n\nmodule.exports = { scrapeWithAntiBot };",
+    "teste": [
+      "Cenário de Sucesso: Função extrai 5 mensagens recentes do chat público com user-agent rotacionado a cada execução",
+      "Cenário de Erro 403: Ao receber status 403, a função registra 'Possível bloqueio detectado' no console e retorna objeto de erro",
+      "Cenário de Humanização: Função simula scroll vertical (100-300px) e clique aleatório na página antes da extração"
+    ]
+  },
+  "riscos": [
+    "Detecção de bot sem uso de proxies - Mitigação com delays aleatórios e rotação de user-agents",
+    "Limite de 10 sessões simultâneas por restrições do SQLite e Render free tier - Solução: Fila de processamento",
+    "Alterações na estrutura do site (ex.: mudança do seletor #chat-messages) - Monitoramento contínuo necessário",
+    "Limites de uso do Render free tier (750h/mês) podem ser excedidos - Necessidade de gerenciamento de recursos",
+    "Bloqueio por IP após múltiplas requisições - Risco reduzido com técnicas anti-bot, mas ainda possível"
+  ],
+  "custo_estimado": {
+    "dev": "R$0 (ferramentas open-source, equipe interna)",
+    "infra": "R$0 (Render/Vercel free tier)"
+  },
+  "proximo_passo": "Deploy do backend no Render e frontend no Vercel, configuração de variáveis de ambiente, e implementação dos testes unitários"
+}
