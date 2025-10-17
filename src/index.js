@@ -27,13 +27,16 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "*",
+    origin: ["https://licita-sonar.vercel.app", "http://localhost:3000"],
     methods: ["GET", "POST"]
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ["https://licita-sonar.vercel.app", "http://localhost:3000"],
+  credentials: true
+}));
 app.use(express.json());
 // Fix the path to the public directory
 app.use(express.static(path.join(__dirname, '..', 'public')));

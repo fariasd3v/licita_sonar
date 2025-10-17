@@ -162,7 +162,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             if (authToken) {
                 // Verify token and get user info
-                fetch('/api/auth/verify', {
+                fetch('https://licita-sonar-backend.onrender.com/api/auth/verify', {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -196,7 +196,7 @@
                 return;
             }
             
-            fetch('/api/auth/login', {
+            fetch('https://licita-sonar-backend.onrender.com/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -231,7 +231,7 @@
                 return;
             }
             
-            fetch('/api/auth/register', {
+            fetch('https://licita-sonar-backend.onrender.com/api/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -252,17 +252,101 @@
             });
         }
 
-        function logout() {
-            authToken = null;
-            currentUser = null;
-            localStorage.removeItem('authToken');
-            if (socket) {
-                socket.disconnect();
-                socket = null;
+        // Session functions
+        function loadSessions() {
+            fetch('https://licita-sonar-backend.onrender.com/api/sessions', {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(sessionMessage, data.error, 'error');
+                } else {
+                    renderSessions(data.sessions);
+                }
+            })
+            .catch(error => {
+                console.error('Load sessions error:', error);
+                showMessage(sessionMessage, 'Erro ao carregar sessões.', 'error');
+            });
+        }
+
+        function addSession() {
+            const sessionId = document.getElementById('sessionIdInput').value;
+            
+            if (!sessionId) {
+                showMessage(sessionMessage, 'Por favor, informe o ID da sessão.', 'error');
+                return;
             }
-            showAuthForm();
-            clearSessions();
-            clearMessages();
+            
+            fetch('https://licita-sonar-backend.onrender.com/api/sessions/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ sessionId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(sessionMessage, data.error, 'error');
+                } else {
+                    showMessage(sessionMessage, 'Sessão adicionada com sucesso!', 'success');
+                    document.getElementById('sessionIdInput').value = '';
+                    loadSessions();
+                }
+            })
+            .catch(error => {
+                console.error('Add session error:', error);
+                showMessage(sessionMessage, 'Erro ao adicionar sessão.', 'error');
+            });
+        }
+
+        // Message functions
+        function loadMessages(sessionId) {
+            fetch(`https://licita-sonar-backend.onrender.com/api/sessions/${sessionId}/messages`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(sessionMessage, data.error, 'error');
+                } else {
+                    renderMessages(data.messages);
+                }
+            })
+            .catch(error => {
+                console.error('Load messages error:', error);
+                showMessage(sessionMessage, 'Erro ao carregar mensagens.', 'error');
+            });
+        }
+
+        // Socket connection
+        function connectSocket() {
+            socket = io('https://licita-sonar-backend.onrender.com');
+            
+            socket.on('connect', function() {
+                console.log('Connected to socket server');
+            });
+            
+            socket.on('newMessage', function(data) {
+                if (data.sessionId === currentSession) {
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'message';
+                    messageElement.innerHTML = `<strong>${new Date(data.timestamp).toLocaleTimeString()}</strong> - ${data.msg}`;
+                    chatMessages.appendChild(messageElement);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from socket server');
+            });
         }
 
         // UI functions
@@ -290,58 +374,6 @@
         }
 
         // Session functions
-        function loadSessions() {
-            fetch('/api/sessions', {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showMessage(sessionMessage, data.error, 'error');
-                } else {
-                    renderSessions(data.sessions);
-                }
-            })
-            .catch(error => {
-                console.error('Load sessions error:', error);
-                showMessage(sessionMessage, 'Erro ao carregar sessões.', 'error');
-            });
-        }
-
-        function addSession() {
-            const sessionId = document.getElementById('sessionIdInput').value;
-            
-            if (!sessionId) {
-                showMessage(sessionMessage, 'Por favor, informe o ID da sessão.', 'error');
-                return;
-            }
-            
-            fetch('/api/sessions/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify({ sessionId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showMessage(sessionMessage, data.error, 'error');
-                } else {
-                    showMessage(sessionMessage, 'Sessão adicionada com sucesso!', 'success');
-                    document.getElementById('sessionIdInput').value = '';
-                    loadSessions();
-                }
-            })
-            .catch(error => {
-                console.error('Add session error:', error);
-                showMessage(sessionMessage, 'Erro ao adicionar sessão.', 'error');
-            });
-        }
-
         function renderSessions(sessions) {
             sessionList.innerHTML = '';
             
@@ -386,26 +418,6 @@
         }
 
         // Message functions
-        function loadMessages(sessionId) {
-            fetch(`/api/sessions/${sessionId}/messages`, {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showMessage(sessionMessage, data.error, 'error');
-                } else {
-                    renderMessages(data.messages);
-                }
-            })
-            .catch(error => {
-                console.error('Load messages error:', error);
-                showMessage(sessionMessage, 'Erro ao carregar mensagens.', 'error');
-            });
-        }
-
         function renderMessages(messages) {
             chatMessages.innerHTML = '';
             
@@ -430,29 +442,6 @@
 
         function clearMessages() {
             chatMessages.innerHTML = '<div class="message">Selecione uma sessão para ver as mensagens</div>';
-        }
-
-        // Socket connection
-        function connectSocket() {
-            socket = io();
-            
-            socket.on('connect', function() {
-                console.log('Connected to socket server');
-            });
-            
-            socket.on('newMessage', function(data) {
-                if (data.sessionId === currentSession) {
-                    const messageElement = document.createElement('div');
-                    messageElement.className = 'message';
-                    messageElement.innerHTML = `<strong>${new Date(data.timestamp).toLocaleTimeString()}</strong> - ${data.msg}`;
-                    chatMessages.appendChild(messageElement);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            });
-            
-            socket.on('disconnect', function() {
-                console.log('Disconnected from socket server');
-            });
         }
 
         // Event listeners
